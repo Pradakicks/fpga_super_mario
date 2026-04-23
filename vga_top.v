@@ -83,6 +83,14 @@ module vga_top (
 
   wire [11:0] mario_rgb;
   wire [11:0] brick_rgb;
+  wire [11:0] lucky_rgb;
+
+  // Hardcoded positions of three lucky "?" blocks (top-left corners), in binary.
+  // Each value is 10 bits. Row Y = 340 shared; Xs are 300, 350, 400.
+  localparam [9:0] LUCKY_X1 = 10'b0100101100;  // 300
+  localparam [9:0] LUCKY_X2 = 10'b0101011110;  // 350
+  localparam [9:0] LUCKY_X3 = 10'b0110010000;  // 400
+  localparam [9:0] LUCKY_Y  = 10'b0101010100;  // 340
   // wire collision;
   // wire grounded, jumping_up, direction;
   // wire [9:0] y_x, y_y;
@@ -152,6 +160,8 @@ module vga_top (
       .ypos(y),
       .background(background),
       .brick_rgb(brick_rgb),
+      .lucky_rgb(lucky_rgb),
+      .lucky_fill(lucky_fill),
       .state_for_LED(state_for_LED),
       .sub_state_for_LED(sub_state_for_LED)
   );
@@ -162,6 +172,26 @@ module vga_top (
       .row(vc),
       .col(hc),
       .color_data(brick_rgb)
+  );
+
+  // Per-block fill flags. A pixel is inside block N if hc/vc lands in its 16x16 box.
+  wire in_lucky1 = (vc >= LUCKY_Y) && (vc < LUCKY_Y + 16) && (hc >= LUCKY_X1) && (hc < LUCKY_X1 + 16);
+  wire in_lucky2 = (vc >= LUCKY_Y) && (vc < LUCKY_Y + 16) && (hc >= LUCKY_X2) && (hc < LUCKY_X2 + 16);
+  wire in_lucky3 = (vc >= LUCKY_Y) && (vc < LUCKY_Y + 16) && (hc >= LUCKY_X3) && (hc < LUCKY_X3 + 16);
+  wire lucky_fill = in_lucky1 | in_lucky2 | in_lucky3;
+
+  // Single ROM shared by all three blocks. Pick the row/col relative to whichever
+  // block contains the current pixel (blocks don't overlap, so priority is fine).
+  wire [9:0] lucky_row = vc - LUCKY_Y;  // same for all three, shared Y
+  wire [9:0] lucky_col = in_lucky1 ? (hc - LUCKY_X1)
+                       : in_lucky2 ? (hc - LUCKY_X2)
+                       :             (hc - LUCKY_X3);
+
+  lucky_rom lucky_rom_unit (
+      .clk(ClkPort),
+      .row(lucky_row),
+      .col(lucky_col),
+      .color_data(lucky_rgb)
   );
 
   // Display Mario in a 16x16 box; ROM is 40 rows x 32 cols, so scale by 5/2 and 2.

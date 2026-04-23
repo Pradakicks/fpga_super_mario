@@ -24,6 +24,8 @@ module block_controller (
     vCount,
     input [11:0] mario_rgb,
     input [11:0] brick_rgb,
+    input [11:0] lucky_rgb,
+    input        lucky_fill,
     output reg [11:0] rgb,
     output reg [11:0] background,
     output reg [9:0] xpos,
@@ -140,6 +142,7 @@ module block_controller (
     // else if (block_fill) rgb = RED;
     else if (block_fill && mario_rgb != 12'b011011011110) rgb = mario_rgb;
     // else if (block_fill) rgb = BLUE;
+    else if (lucky_fill) rgb = lucky_rgb;
     else if (floor_fill) rgb = brick_rgb;
     else
       rgb = background;
