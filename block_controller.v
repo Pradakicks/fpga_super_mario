@@ -145,10 +145,10 @@ module block_controller (
       rgb = background;
 
   end
-  // Mario drawn in a 32x32 box; xpos/ypos is the top-left corner.
-  assign block_fill = vCount >= ypos && vCount < (ypos + 32) && hCount >= xpos && hCount < (xpos + 32);
+  // Mario drawn in a 16x16 box; xpos/ypos is the top-left corner.
+  assign block_fill = vCount >= ypos && vCount < (ypos + 16) && hCount >= xpos && hCount < (xpos + 16);
   // Floor begins at GROUND (below Mario's feet) and runs to the bottom of the screen.
-  assign floor_fill = vCount >= (GROUND + 32);
+  assign floor_fill = vCount >= (GROUND + 16);
 
   always @(posedge move_clk, posedge rst) begin
     if (rst) begin

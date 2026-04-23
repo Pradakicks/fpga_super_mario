@@ -164,10 +164,11 @@ module vga_top (
       .color_data(brick_rgb)
   );
 
-  // Display Mario in a 32x32 box; ROM is 40 rows tall, so scale vertically (*5/4).
-  wire [9:0] mario_dy = vc - y;           // 0..31 inside the box
-  wire [9:0] mario_row = (mario_dy * 5) >> 2;  // 0..39 into the ROM
-  wire [9:0] mario_col = hc - x;               // 0..31 (no scale)
+  // Display Mario in a 16x16 box; ROM is 40 rows x 32 cols, so scale by 5/2 and 2.
+  wire [9:0] mario_dy = vc - y;                // 0..15 inside the box
+  wire [9:0] mario_dx = hc - x;                // 0..15 inside the box
+  wire [9:0] mario_row = (mario_dy * 5) >> 1;  // 0..39 into the ROM
+  wire [9:0] mario_col = mario_dx << 1;        // 0..31 into the ROM
   mario_rom mario_rom_unit (
       .clk(ClkPort),
       .row(mario_row),
