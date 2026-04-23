@@ -23,6 +23,7 @@ module block_controller (
     input [9:0] hCount,
     vCount,
     input [11:0] mario_rgb,
+    input [11:0] brick_rgb,
     output reg [11:0] rgb,
     output reg [11:0] background,
     output reg [9:0] xpos,
@@ -35,6 +36,7 @@ module block_controller (
     output [3:0] sub_state_for_LED
 );
   wire block_fill;
+  wire floor_fill;
 
   // This is like a boolean to see if mario is still above the ground
   wire above_ground;
@@ -138,12 +140,15 @@ module block_controller (
     // else if (block_fill) rgb = RED;
     else if (block_fill && mario_rgb != 12'b011011011110) rgb = mario_rgb;
     // else if (block_fill) rgb = BLUE;
+    else if (floor_fill) rgb = brick_rgb;
     else
       rgb = background;
 
   end
   // Mario drawn in a 32x32 box; xpos/ypos is the top-left corner.
   assign block_fill = vCount >= ypos && vCount < (ypos + 32) && hCount >= xpos && hCount < (xpos + 32);
+  // Floor begins at GROUND (below Mario's feet) and runs to the bottom of the screen.
+  assign floor_fill = vCount >= (GROUND + 32);
 
   always @(posedge move_clk, posedge rst) begin
     if (rst) begin

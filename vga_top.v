@@ -82,6 +82,7 @@ module vga_top (
   wire rst;
 
   wire [11:0] mario_rgb;
+  wire [11:0] brick_rgb;
   // wire collision;
   // wire grounded, jumping_up, direction;
   // wire [9:0] y_x, y_y;
@@ -150,8 +151,17 @@ module vga_top (
       .xpos(x),
       .ypos(y),
       .background(background),
+      .brick_rgb(brick_rgb),
       .state_for_LED(state_for_LED),
       .sub_state_for_LED(sub_state_for_LED)
+  );
+
+  // Tile the 16x16 brick ROM across the screen using low bits of the scan counters.
+  brick_rom brick_rom_unit (
+      .clk(ClkPort),
+      .row(vc),
+      .col(hc),
+      .color_data(brick_rgb)
   );
 
   // Display Mario in a 32x32 box; ROM is 40 rows tall, so scale vertically (*5/4).
