@@ -1,15 +1,15 @@
 module mario_rom (
     input wire clk,
-    input wire [6:0] row,
-    input wire [3:0] col,
+    input wire [9:0] row,
+    input wire [9:0] col,
     output reg [11:0] color_data
 );
 
   (* rom_style = "block" *)
 
   //signal declaration
-  reg [6:0] row_reg;
-  reg [3:0] col_reg;
+  reg [9:0] row_reg;
+  reg [9:0] col_reg;
 
   always @(posedge clk) begin
     row_reg <= row;
@@ -18,7 +18,7 @@ module mario_rom (
 
   always @*
     case ({
-      row_reg, col_reg
+      row_reg[5:0], col_reg[4:0]
     })
       11'b00000000000: color_data = 12'b011011011110;
       11'b00000000001: color_data = 12'b011011011110;
