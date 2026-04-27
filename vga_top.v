@@ -84,6 +84,11 @@ module vga_top (
   wire [11:0] mario_rgb;
   wire [11:0] brick_rgb;
   wire [11:0] lucky_rgb;
+  wire [11:0] cloud_rgb;
+  wire [11:0] goomba_rgb;
+  wire [11:0] pipe_rgb;
+  wire        cloud_fill, goomba_fill, pipe_fill, hill_fill;
+  wire        in_cloud1, in_cloud2, in_goomba1, in_goomba2;
 
   // Hardcoded positions of three lucky "?" blocks (top-left corners), in binary.
   // Each value is 10 bits. Row Y = 340 shared; Xs are 300, 350, 400.
@@ -91,6 +96,26 @@ module vga_top (
   localparam [9:0] LUCKY_X2 = 10'b0101011110;  // 350
   localparam [9:0] LUCKY_X3 = 10'b0110010000;  // 400
   localparam [9:0] LUCKY_Y  = 10'b0101010100;  // 340
+
+  // Two clouds (32x16) up in the sky.
+  localparam [9:0] CLOUD_X1 = 10'b0010110100;  //  180
+  localparam [9:0] CLOUD_Y1 = 10'b0001010000;  //   80
+  localparam [9:0] CLOUD_X2 = 10'b1000011100;  //  540
+  localparam [9:0] CLOUD_Y2 = 10'b0001111000;  //  120
+
+  // Two Goombas (16x16) standing on the floor (y matches GROUND=400).
+  localparam [9:0] GOOMBA_X1 = 10'b0011011100;  // 220
+  localparam [9:0] GOOMBA_X2 = 10'b0101001010;  // 330
+  localparam [9:0] GOOMBA_Y  = 10'b0110010000;  // 400 (top-left, feet at 416)
+
+  // Green pipe (32x48) sitting on the floor to Mario's left.
+  localparam [9:0] PIPE_X = 10'b0101111100;  // 380
+  localparam [9:0] PIPE_Y = 10'b0101110000;  // 368 (sits flush on floor at 416)
+
+  // Hill (procedural triangle behind the floor).
+  localparam [9:0] HILL_CX  = 10'b1001011000;  // 600
+  localparam [9:0] HILL_TOP = 10'b0101111100;  // 380
+  localparam [9:0] FLOOR_TOP = 10'b0110100000; // 416 (GROUND+16)
   // wire collision;
   // wire grounded, jumping_up, direction;
   // wire [9:0] y_x, y_y;
@@ -162,6 +187,13 @@ module vga_top (
       .brick_rgb(brick_rgb),
       .lucky_rgb(lucky_rgb),
       .lucky_fill(lucky_fill),
+      .cloud_rgb(cloud_rgb),
+      .cloud_fill(cloud_fill),
+      .goomba_rgb(goomba_rgb),
+      .goomba_fill(goomba_fill),
+      .pipe_rgb(pipe_rgb),
+      .pipe_fill(pipe_fill),
+      .hill_fill(hill_fill),
       .state_for_LED(state_for_LED),
       .sub_state_for_LED(sub_state_for_LED)
   );
@@ -193,6 +225,55 @@ module vga_top (
       .col(lucky_col),
       .color_data(lucky_rgb)
   );
+
+  // ---------------- Clouds ----------------
+  // Two 32x16 clouds, multiplexed onto a single ROM (same pattern as lucky blocks).
+  assign in_cloud1 = (vc >= CLOUD_Y1) && (vc < CLOUD_Y1 + 16)
+                  && (hc >= CLOUD_X1) && (hc < CLOUD_X1 + 32);
+  assign in_cloud2 = (vc >= CLOUD_Y2) && (vc < CLOUD_Y2 + 16)
+                  && (hc >= CLOUD_X2) && (hc < CLOUD_X2 + 32);
+  assign cloud_fill = in_cloud1 | in_cloud2;
+  wire [9:0] cloud_row = in_cloud1 ? (vc - CLOUD_Y1) : (vc - CLOUD_Y2);
+  wire [9:0] cloud_col = in_cloud1 ? (hc - CLOUD_X1) : (hc - CLOUD_X2);
+  cloud_rom cloud_rom_unit (
+      .clk(ClkPort),
+      .row(cloud_row),
+      .col(cloud_col),
+      .color_data(cloud_rgb)
+  );
+
+  // ---------------- Goombas ----------------
+  assign in_goomba1 = (vc >= GOOMBA_Y) && (vc < GOOMBA_Y + 16)
+                   && (hc >= GOOMBA_X1) && (hc < GOOMBA_X1 + 16);
+  assign in_goomba2 = (vc >= GOOMBA_Y) && (vc < GOOMBA_Y + 16)
+                   && (hc >= GOOMBA_X2) && (hc < GOOMBA_X2 + 16);
+  assign goomba_fill = in_goomba1 | in_goomba2;
+  wire [9:0] goomba_row = vc - GOOMBA_Y;
+  wire [9:0] goomba_col = in_goomba1 ? (hc - GOOMBA_X1) : (hc - GOOMBA_X2);
+  goomba_rom goomba_rom_unit (
+      .clk(ClkPort),
+      .row(goomba_row),
+      .col(goomba_col),
+      .color_data(goomba_rgb)
+  );
+
+  // ---------------- Pipe (single instance, 32x48) ----------------
+  assign pipe_fill = (vc >= PIPE_Y) && (vc < PIPE_Y + 48)
+                  && (hc >= PIPE_X) && (hc < PIPE_X + 32);
+  pipe_rom pipe_rom_unit (
+      .clk(ClkPort),
+      .row(vc - PIPE_Y),
+      .col(hc - PIPE_X),
+      .color_data(pipe_rgb)
+  );
+
+  // ---------------- Hill (procedural triangle) ----------------
+  // Half-width grows linearly from the apex (HILL_TOP) down to the floor.
+  wire [9:0] hill_dy    = vc - HILL_TOP;          // 0 at apex, ~36 at base
+  wire [9:0] hill_left  = HILL_CX - hill_dy;
+  wire [9:0] hill_right = HILL_CX + hill_dy;
+  assign hill_fill = (vc >= HILL_TOP) && (vc < FLOOR_TOP)
+                  && (hc >= hill_left) && (hc <= hill_right);
 
   // Display Mario in a 16x16 box; ROM is 40 rows x 32 cols, so scale by 5/2 and 2.
   wire [9:0] mario_dy = vc - y;                // 0..15 inside the box
