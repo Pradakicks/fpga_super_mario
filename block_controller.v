@@ -26,6 +26,13 @@ module block_controller (
     input [11:0] brick_rgb,
     input [11:0] lucky_rgb,
     input        lucky_fill,
+    input [11:0] cloud_rgb,
+    input        cloud_fill,
+    input [11:0] goomba_rgb,
+    input        goomba_fill,
+    input [11:0] pipe_rgb,
+    input        pipe_fill,
+    input        hill_fill,
     output reg [11:0] rgb,
     output reg [11:0] background,
     output reg [9:0] xpos,
@@ -142,8 +149,12 @@ module block_controller (
     // else if (block_fill) rgb = RED;
     else if (block_fill && mario_rgb != 12'b011011011110) rgb = mario_rgb;
     // else if (block_fill) rgb = BLUE;
+    else if (goomba_fill && goomba_rgb != 12'h001) rgb = goomba_rgb;
+    else if (pipe_fill && pipe_rgb != 12'h001) rgb = pipe_rgb;
     else if (lucky_fill) rgb = lucky_rgb;
     else if (floor_fill) rgb = brick_rgb;
+    else if (cloud_fill && cloud_rgb != 12'h001) rgb = cloud_rgb;
+    else if (hill_fill) rgb = 12'h060;  // dark green hill
     else
       rgb = background;
 
@@ -376,7 +387,7 @@ module block_controller (
 
   //the background color reflects the most recent button press
   always @(posedge move_clk, posedge rst) begin
-    if (rst) background <= 12'b1111_1111_1111;
+    if (rst) background <= 12'h59F;  // SMB sky blue
     // else 
     // if(right)
     // 	background <= 12'b1111_1111_0000;
