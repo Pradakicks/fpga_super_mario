@@ -104,8 +104,8 @@ module vga_top (
   localparam [9:0] CLOUD_Y2 = 10'b0001111000;  //  120
 
   // Two Goombas (16x16) standing on the floor (y matches GROUND=400).
-  localparam [9:0] GOOMBA_X1 = 10'b0011011100;  // 220
-  localparam [9:0] GOOMBA_X2 = 10'b0101001010;  // 330
+  localparam [9:0] GOOMBA_X1 = 10'b0010100000;  // 160
+  localparam [9:0] GOOMBA_X2 = 10'b1000110000;  // 560
   localparam [9:0] GOOMBA_Y  = 10'b0110010000;  // 400 (top-left, feet at 416)
 
   // Green pipe (32x48) sitting on the floor to Mario's left.
@@ -153,6 +153,18 @@ module vga_top (
   assign move_clk = DIV_CLK[19];  //slower clock to drive the movement of objects on the vga screen
   assign gravity_clk=DIV_CLK[21];	// Even slower close to make the gravity not make mario fall too fast
   wire [11:0] background;
+
+  // Goomba wobble: small triangle-wave offset, ~+/-7 px.
+  reg [3:0] goomba_phase;
+  reg       goomba_tick_d;
+  wire      goomba_tick = DIV_CLK[22];
+  always @(posedge ClkPort) begin
+    goomba_tick_d <= goomba_tick;
+    if (goomba_tick && !goomba_tick_d) goomba_phase <= goomba_phase + 1'b1;
+  end
+  wire [2:0] tri_off  = goomba_phase[3] ? (~goomba_phase[2:0]) : goomba_phase[2:0];
+  wire [9:0] GOOMBA1_X = GOOMBA_X1 + tri_off;
+  wire [9:0] GOOMBA2_X = GOOMBA_X2 - tri_off;
 
   // These modules are like functions
   display_controller dc (
@@ -244,12 +256,12 @@ module vga_top (
 
   // ---------------- Goombas ----------------
   assign in_goomba1 = (vc >= GOOMBA_Y) && (vc < GOOMBA_Y + 16)
-                   && (hc >= GOOMBA_X1) && (hc < GOOMBA_X1 + 16);
+                   && (hc >= GOOMBA1_X) && (hc < GOOMBA1_X + 16);
   assign in_goomba2 = (vc >= GOOMBA_Y) && (vc < GOOMBA_Y + 16)
-                   && (hc >= GOOMBA_X2) && (hc < GOOMBA_X2 + 16);
+                   && (hc >= GOOMBA2_X) && (hc < GOOMBA2_X + 16);
   assign goomba_fill = in_goomba1 | in_goomba2;
   wire [9:0] goomba_row = vc - GOOMBA_Y;
-  wire [9:0] goomba_col = in_goomba1 ? (hc - GOOMBA_X1) : (hc - GOOMBA_X2);
+  wire [9:0] goomba_col = in_goomba1 ? (hc - GOOMBA1_X) : (hc - GOOMBA2_X);
   goomba_rom goomba_rom_unit (
       .clk(ClkPort),
       .row(goomba_row),
